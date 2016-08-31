@@ -1,0 +1,5 @@
+#!/bin/bash
+
+sleep 20
+
+curlftpfs "ftp://admin:elephantidae@192.168.1.1/" "/home/pablo/ftpRouter"

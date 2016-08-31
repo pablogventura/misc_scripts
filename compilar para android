@@ -1,0 +1,2 @@
+
+PATH=$PATH:~/android/prebuilt/linux-x86/toolchain/arm-eabi-4.3.1/bin:~/:~/android/

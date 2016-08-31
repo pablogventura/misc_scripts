@@ -1,0 +1,128 @@
+#!/bin/bash
+
+if [ "$SHELL" = "/bin/sh" ]; then
+  	echo "Este script no corre con sh, corre con bash!"
+  	echo ""
+	echo "Usar asi: xsmspersonal numero_destinario tu_nick mensaje"
+ 	echo ""
+	echo "tu_nick como maximo 30 caracteres"
+	echo "mensaje+tu nick como maximo 110 caracteres"
+	echo ""
+	echo "Ejemplo: xsmspersonal 0111566002354 'Wetsa 11' 'Otro gol de Palermo!'"
+	echo ""
+	echo "O sino: bash xsmspersonal 0111566002354 'Wetsa 11' 'Otro gol de Palermo!'"
+fi
+
+
+function f_cel {
+    	fixed=$1;
+	cel="";
+	echo $fixed | grep ^+54
+    	if [[ $? -eq 0 ]]; then
+		fixed=${fixed:3};
+	fi 
+	echo $fixed | grep ^0
+    	if [[ $? -eq 0 ]] ; then
+		fixed=${fixed:1};
+	fi 
+	echo $fixed | grep ^11
+    	if [[ $? -eq 0 ]] ; then
+		cel="11";
+		fixed=${fixed:2};
+	else	
+		echo $fixed | grep ^..15
+    		if [[ $? -eq 0 ]]; then
+		cel=${fixed:0:3};
+		fixed=${fixed:3};
+		else
+			echo $fixed | grep ^....15
+	    		if [[ $? -eq 0 ]] ; then
+			cel=${fixed:0:4};
+			fixed=${fixed:4};
+			else
+				((largo=${#fixed}-6))
+				cel=${fixed:0:largo};
+				fixed=${fixed:largo};
+			fi
+		fi
+	fi
+	echo $fixed | grep ^15
+    	if [[ $? -eq 0 ]]; then
+		fixed=${fixed:2};
+	fi
+	cel2=$fixed;
+}
+function salir {
+	echo ""
+	echo "Usar asi: xsmspersonal numero_destinario tu_nick mensaje"
+ 	echo ""
+	echo "tu_nick como maximo 30 caracteres"
+	echo "mensaje+tu nick como maximo 110 caracteres"
+	echo ""
+	echo "Ejemplo: xsmspersonal 0111566002354 'Wetsa 11' 'Otro gol de Palermo!'"
+	echo ""
+   	exit 1
+}
+
+
+if [ $# -lt 3 ]; then
+	salir
+fi
+numero=$1
+DE_MESG_TXT=$2 #maximo 30
+MESG_TXT=$3 #DE_MES..+MESG max 110
+
+((largo=${#DE_MESG_TXT}+${#MESG_TXT}))
+if [ $largo -gt 110 ]; then
+	echo ""
+	echo "EXEDISTE LOS 110 CARACTERES!"
+	echo ""
+	salir
+fi
+((largo=${#DE_MESG_TXT}))
+if [ $largo -gt 30 ]; then
+	echo ""
+	echo "EXEDISTE LOS 30 CARACTERES DEL NICK!"
+	echo ""
+	salir
+fi
+dir_img=""
+intentos=0
+while [[ $dir_img = "" ]] && [[ $intentos -lt 10 ]]
+do
+	URL="http://sms2.personal.com.ar/Mensajes/sms.php"
+	wget --post-data="" --tries=8 --cookies=on --keep-session-cookies --save-cookies=/tmp/cookie.txt --output-document=/tmp/sms.php $URL
+	todo=`cat /tmp/sms.php | grep http://sms2.personal.com.ar/Mensajes/tmp/`
+	dir_img=`expr match "$todo" '.*\(h.*.png*\)'`
+	((intentos=$intentos+1))
+done
+wget --referer=$URL --cookies=on --load-cookies=/tmp/cookie.txt --keep-session-cookies --save-cookies=/tmp/cookie.txt --output-document=/tmp/captcha.png $dir_img
+
+echo "Se abrira una ventana con el captcha"
+nohup display -title "Captcha" -resize 300% "/tmp/captcha.png" & # > /dev/null
+
+capt=""
+echo $capt | grep ^[1-9][1-9][1-9][1-9]$
+while [[ $? -ne 0 ]]
+do
+    read -p "Ingrese el captcha (cuatro numeros): " capt
+echo $capt | grep ^[1-9][1-9][1-9][1-9]$
+done
+
+f_cel $numero
+Filename=${dir_img//'/'/%2F}
+POSTFIELDS='form_flag=&Snb='$cel$cel2'&subname='$cel$cel2'&sig='$DE_MESG_TXT'&msgtext='$MESG_TXT'&form=ht4&size=10&btn_send=SEND&historico=&Filename='$Filename'&FormValidar=validar&CODAREA='$cel'&NRO='$cel2'&DE_MESG_TXT='$DE_MESG_TXT'&sizebox='$faltante'&MESG_TXT='$MESG_TXT'&codigo='$capt'&Enviar.x=13&Enviar.y=7&pantalla=';
+wget --post-data="$POSTFIELDS" --cookies=on --keep-session-cookies --load-cookies=/tmp/cookie.txt --save-cookies=/tmp/cookie.txt --output-document=/tmp/sms.php $URL
+todo=`cat /tmp/sms.php | grep ' - a '`
+buscar=$DE_MESG_TXT': '$MESG_TXT' - a '$cel$cel2
+buscar=${buscar//'\'/'\\'}
+echo $todo | grep "$buscar"
+if [[ $? -eq 0 ]];then
+	echo "mensaje enviado!"
+else
+	echo "Error al enviar el sms"
+fi
+rm "/tmp/captcha.png"
+rm "/tmp/sms.php"
+rm "/tmp/cookie.txt"
+

@@ -1,0 +1,35 @@
+#!/bin/bash
+
+# This code was written by Pablo Ventura in 2012, and is in public domain.
+
+# concatena todos los pdf de un directorio agregando una pagina en blanco a los
+# impares (queda para imprimir a dos caras)
+
+echo "" | ps2pdf - enblanco
+
+for f in *.pdf
+do
+	paginas=`pdfinfo """$f""" | grep "Pages" | cut -d ":" -f 2`
+
+	read  -rd '' paginas <<< "$paginas"
+	echo -n "Paginas de $f = $paginas"
+	impar=$(($paginas % 2))
+	if [ $impar == 1 ]
+	then
+		echo ' que es impar. Agrego pagina en blanco.'
+		pdftk """$f""" "enblanco" cat output "out.pdf"
+		
+		rm """$f"""
+		mv "./out.pdf" """$f"""
+		
+	else
+		echo ' que es par. No hago nada.'
+	fi
+done
+
+rm enblanco
+
+FILES=*.pdf
+
+echo 'Junto todo en salida.pdf'
+pdftk $FILES cat output "salida.pdf"
